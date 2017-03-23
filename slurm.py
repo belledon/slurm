@@ -23,8 +23,8 @@ import parallelGlobals as pg
 
 from time import sleep
 from os import environ
-from os import putenv
-from collections import namedtuple
+
+
 
 
 def package(pre, data):
