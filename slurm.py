@@ -14,12 +14,15 @@
 # 	if needed
 # _____________________________________________________
 # author(s): Mario E. Belledonne
-import job
+import sys
+
 import argparse
 import subprocess
 
 import numpy as np
-import parallelGlobals as pg
+
+from . import job
+from . import parallelGlobals
 
 from time import sleep
 from os import environ
@@ -90,7 +93,7 @@ class Batch:
 		# cpu
 		print("Assigning cpus")
 		precursor.append('-c {:d}'.format(self.cpu))
-		if pg.setCores(self.cpu):
+		if parallelGlobals.setCores(self.cpu):
 			print("Jobs will use {:d} core(s)".format(self.cpu))
 		else:
 			print("OOPS! Something went wrong with " +\
