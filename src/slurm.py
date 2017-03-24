@@ -21,8 +21,8 @@ import subprocess
 
 import numpy as np
 
-from . import job
-from . import parallelGlobals
+from slurm import job
+from slurm import parallelGlobals
 
 from time import sleep
 from os import environ

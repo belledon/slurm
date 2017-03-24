@@ -1,5 +1,5 @@
 import argparse
-import slurm
+import slurm as om
 # Note: It is recommended to add this a submodule within that path
 # that you will be working in. Thus you'll use something like:
 #  ` from slurm import slurm`
