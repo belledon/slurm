@@ -15,14 +15,16 @@
 # _____________________________________________________
 # author(s): Mario E. Belledonne
 import sys
+print("\n".join(sys.path))
 
 import argparse
 import subprocess
 
 import numpy as np
 
-from slurm import job
-from slurm import parallelGlobals
+# import job
+import job
+import parallelGlobals
 
 from time import sleep
 from os import environ
