@@ -67,6 +67,9 @@ class JobArray:
 	def __hash__(self):
 		return hash(self.jobId)
 
+	def __str__(self):
+		return self.arrayID
+
 	# Find the jobs for the job array
 	def update(self):
 		arrayID = self.arrayID
