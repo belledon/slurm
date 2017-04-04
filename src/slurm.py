@@ -14,8 +14,6 @@
 # 	if needed
 # _____________________________________________________
 # author(s): Mario E. Belledonne
-import sys
-print("\n".join(sys.path))
 
 import argparse
 import subprocess
