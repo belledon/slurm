@@ -18,8 +18,6 @@
 import argparse
 import subprocess
 
-import numpy as np
-
 from . import job
 from . import parallelGlobals
 
@@ -65,6 +63,10 @@ def args(parser):
 	parser.add_argument('--qos', '-q', type = str, default = None,
 		help = "Quality of service")
 
+	parser.add_argument('--gpus', '-g', type = int, default = 0,
+		help  = "Amount of gpus  per  job")
+
+
 	return parser
 
 class Batch:
@@ -79,6 +81,7 @@ class Batch:
 		self.mem = args.mem
 		self.time = args.time
 		self.qos = args.qos
+		self.gpus = args.gpus
 		self.batch = batch
 		self.jobArray = None
 
@@ -111,6 +114,11 @@ class Batch:
 			precursor.append("--qos=" + self.qos)
 		else:
 			print("Jobs will not have qos")
+
+		# gpus
+		if self.gpus > 0:
+			print("Jobs will have {} gpus".format(self.gpus))
+			precursor.append("--gres=gpu:{}".format(self.gpus))
 
 		return precursor
 
@@ -183,7 +191,7 @@ class Batch:
 		result = job.command(call, input=script)
 
 		if not result:
-			print("Failed to submit template")
+			raise SystemError("Failed to submit template")
 
 		parsed = parseOut(result)
 		if not parsed:
