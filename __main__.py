@@ -38,9 +38,13 @@ def main():
 			arguments.container, arguments.command[0])
 	
 	command = [arguments.command[1:]]
-	flag_keys, flag_vals = arguments.flags[0::2], arguments.flags[1::2]
-	flags = ["-{} {}".format(*t) for t in zip(flag_keys, flag_vals)]
 
+	if arguments.flags:
+		flag_keys, flag_vals = arguments.flags[0::2], arguments.flags[1::2]
+		flags = ["-{} {}".format(*t) for t in zip(flag_keys, flag_vals)]
+	else:
+		flags = []
+		
 	if arguments.modules:
 		modules = arguments.modules
 	else:
