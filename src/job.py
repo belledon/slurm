@@ -30,7 +30,7 @@ def command(c, input = None):
 		# Feed input into subprocess
 		out,err = p.communicate(input=input)
 
-	sys.std.out.flush()
+	sys.stdout.flush()
 	if not err:
 		return out
 	else:
@@ -38,7 +38,7 @@ def command(c, input = None):
 			str(c[0])))
 		print(err)
 		print(out)
-		sys.std.out.flush()
+		sys.stdout.flush()
 		return False
 
 def parsePoll(out):
