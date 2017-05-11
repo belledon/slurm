@@ -8,10 +8,7 @@
 import numpy as np
 import subprocess
 from time import sleep
-
-jobStates = ["ST", "CD", "PD", "PE", "RU"]
-categories = ["JOBID", 'PARTITION', 'NAME', 'USER', 'ST', 'TIME', 'NODES',
-'NODELIST(REASON)']
+import sys
 
 
 def command(c, input = None):
@@ -33,6 +30,7 @@ def command(c, input = None):
 		# Feed input into subprocess
 		out,err = p.communicate(input=input)
 
+	sys.std.out.flush()
 	if not err:
 		return out
 	else:
@@ -40,6 +38,7 @@ def command(c, input = None):
 			str(c[0])))
 		print(err)
 		print(out)
+		sys.std.out.flush()
 		return False
 
 def parsePoll(out):
