@@ -150,7 +150,7 @@ class Batch:
 		# The dependent variables called with func.
 		# These may include dynamic flags
 		arguments = [' '.join([ str(e) for e in b ])
-			for b in self.batch if b]
+			for b in self.batch if len(b) > 0]
 		# Export the dynamic variables if using job array
 		print("Exporting job array")
 		if len(arguments) > 0:
