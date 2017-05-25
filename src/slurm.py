@@ -63,7 +63,7 @@ def args(parser):
 	parser.add_argument('--qos', '-q', type = str, default = None,
 		help = "Quality of service")
 
-	parser.add_argument('--gpus', '-g', type = int, default = 0,
+	parser.add_argument('--gpus', '-g', type = str,
 		help  = "Amount of gpus  per  job")
 
 
@@ -116,7 +116,7 @@ class Batch:
 			print("Jobs will not have qos")
 
 		# gpus
-		if self.gpus > 0:
+		if self.gpus is not None:
 			print("Jobs will have {} gpus".format(self.gpus))
 			precursor.append("--gres=gpu:{}".format(self.gpus))
 

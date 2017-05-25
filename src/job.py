@@ -13,6 +13,7 @@ import sys
 
 def command(c, input = None):
 
+	print(c)
 	if input is None:
 		p = subprocess.Popen(c,
 			stdout=subprocess.PIPE,
