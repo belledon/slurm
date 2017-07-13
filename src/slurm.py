@@ -54,7 +54,7 @@ def args(parser):
 	parser.add_argument('--time', '-t', type=str, 	default = "10",
 		help="Maximum time per grasp in minutes.")
 
-	parser.add_argument('--cpus', '-cpu', type = int, default = 2,
+	parser.add_argument('--cpus', '-c', type = int, default = 2,
 		help = "Number of cpus per job")
 
 	parser.add_argument('--mem', '-m', type = int, default = 1,
