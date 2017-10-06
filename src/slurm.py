@@ -23,7 +23,25 @@ from . import parallelGlobals
 
 from time import sleep
 from os import environ
+import shlex
+import tempfile
 
+class BatchFile:
+
+	def __init__(self, array, home=0):
+		
+		if home == 0:
+			d = environ["PWD"]
+		else:
+			d = home
+		
+		with tempfile.NamedTemporaryFile(delete=False, dir=d) as f:
+
+			print("Writing batch file to {}".format(f.name))
+			for line in array:
+				f.write((line + "\n").encode("ascii"))
+
+			self.name = f.name
 
 
 
@@ -52,7 +70,7 @@ def buildExports(exports):
 
 def args(parser):
 	parser.add_argument('--time', '-t', type=str, 	default = "10",
-		help="Maximum time per grasp in minutes.")
+		help="Maximum time in minutes.")
 
 	parser.add_argument('--cpus', '-c', type = int, default = 2,
 		help = "Number of cpus per job")
@@ -65,7 +83,6 @@ def args(parser):
 
 	parser.add_argument('--gpus', '-g', type = str,
 		help  = "Amount of gpus  per  job")
-
 
 	return parser
 
@@ -83,6 +100,7 @@ class Batch:
 		self.qos = args.qos
 		self.gpus = args.gpus
 		self.batch = batch
+		self.batch_file = None
 		self.jobArray = None
 
 
@@ -90,7 +108,7 @@ class Batch:
 		print("Creating slurm configuration...")
 		# Assign static variables for slurm
 		precursor = []
-		precursor.append("-N1")
+		# precursor.append("-N1")
 		# precursor.append("--profile=all")
 		# cpu
 		print("Assigning cpus")
@@ -112,6 +130,8 @@ class Batch:
 		if self.qos:
 			print("Jobs will be subbmitted under "+self.qos)
 			precursor.append("--qos=" + self.qos)
+			if self.qos == "use-everything":
+				precursor.append("--requeue")
 		else:
 			print("Jobs will not have qos")
 
@@ -151,20 +171,29 @@ class Batch:
 		# These may include dynamic flags
 		arguments = [' '.join([ str(e) for e in b ])
 			for b in self.batch if len(b) > 0]
+
+		self.batch_file = BatchFile(arguments)
+
 		# Export the dynamic variables if using job array
-		print("Exporting job array")
-		if len(arguments) > 0:
-			environ["JOBARRAY"] = ",".join(
-				["{}".format(a) for a in arguments])
-		# bash command to extract the dependent variables from the bash array
-		key = "\"${array[$SLURM_ARRAY_TASK_ID]}\""
-		# returns all of the dependent variables for the jobid
+		print("Exporting job array file")
+		environ["JOBARRAY"] = self.batch_file.name
 		value = "\"${jobargs[@]}\""
-		# bash command to split the JOBARRAY string to jobid accesible arrays
-		header += ["IFS=$','", "read -r -a array <<< \"$JOBARRAY\""]
+		# key = 'sed \"${SLURM_ARRAY_TASK_ID}q;d\" $JOBARRAY'
+		key = "awk 'NR == n' n=$IND \"$JOBARRAY\""
+
+		# # bash command to extract the dependent variables from the bash array
+		# key = "\"${array[$SLURM_ARRAY_TASK_ID]}\""
+		# # returns all of the dependent variables for the jobid
+		
+		# # bash command to split the JOBARRAY string to jobid accesible arrays
+		# header += ["IFS=$','", "read -r -a array <<< \"$JOBARRAY\""]
 		# bash command to split the jobid specific array into individual
 		# 	arguments
-		header += ["IFS=' '", "read -r -a jobargs <<< {}".format(key)]
+		header += ["IND=$(($SLURM_ARRAY_TASK_ID+1))"]
+		header += ["ARGS=\"$({0!s})\"".format(key)]
+		# header += ["echo \"$ARGS\"", "echo \"$JOBARRAY\""]
+		header += ["IFS=' '", "read -r -a jobargs <<< \"$ARGS\""]
+
 		# header += ["echo \"jobarray is\" {0!s}".format("${#array[@]}")]
 		# header += ["echo \"id val is\" {0!s}".format("$SLURM_ARRAY_TASK_ID")]
 		# header += ["echo \"array is\" \"{0!s}\"".format(key)]
