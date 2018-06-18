@@ -29,12 +29,12 @@ import tempfile
 class BatchFile:
 
 	def __init__(self, array, home=0):
-		
+
 		if home == 0:
 			d = environ["PWD"]
 		else:
 			d = home
-		
+
 		with tempfile.NamedTemporaryFile(delete=False, dir=d) as f:
 
 			print("Writing batch file to {}".format(f.name))
@@ -75,7 +75,7 @@ def args(parser):
 	parser.add_argument('--cpus', '-c', type = int, default = 2,
 		help = "Number of cpus per job")
 
-	parser.add_argument('--mem', '-m', type = int, default = 1,
+	parser.add_argument('--mem', '-m', type = str, default = "1G",
 		help  = "Amount of memory  per  job")
 
 	parser.add_argument('--qos', '-q', type = str, default = None,
@@ -120,8 +120,8 @@ class Batch:
 				"setting number of cores... Will give only one.")
 		# memory
 		print("Assigning memory")
-		precursor.append('--mem={:d}G'.format(self.mem))
-		print("Jobs will use {:d}GB(s)".format(self.mem))
+		precursor.append('--mem={!s}'.format(self.mem))
+		print("Jobs will use {!s}(s)".format(self.mem))
 		# time
 		print("Jobs will "+\
 			"have a maximum time: {0!s}".format(self.time))
@@ -184,7 +184,7 @@ class Batch:
 		# # bash command to extract the dependent variables from the bash array
 		# key = "\"${array[$SLURM_ARRAY_TASK_ID]}\""
 		# # returns all of the dependent variables for the jobid
-		
+
 		# # bash command to split the JOBARRAY string to jobid accesible arrays
 		# header += ["IFS=$','", "read -r -a array <<< \"$JOBARRAY\""]
 		# bash command to split the jobid specific array into individual
