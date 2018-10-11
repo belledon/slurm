@@ -194,7 +194,7 @@ class Batch:
     def v_read_batch_file(self, size = 1, offset = 0):
 
         # Variables to read args from `BatchFile`
-        idx = "($SLURM_ARRAY_TASK_ID+1) * {size} + {offset}".format(
+        idx = "$SLURM_ARRAY_TASK_ID * {size} + {offset} + 1".format(
             size = size, offset = offset)
         v_file = ["IND=$(({0!s}))".format(idx)]
         key = "awk 'NR == n' n=$IND \"$JOBARRAY\""
@@ -256,10 +256,10 @@ class Batch:
         # The header contains all environmental variables
         v_file = [self.interpreter] + self.modules + self.exports
 
-        for rep in range(chunk):
+        for rep in range(job_size):
             v_file += self.v_read_batch_file(size = job_size, offset = rep)
 
-        return job_size, v_file
+        return v_file
 
     def buildJobs(self, jobArray, size):
         self.jobArray = job.JobArray(jobArray, size, cpu = self.cpu,
@@ -274,11 +274,10 @@ class Batch:
             Default is 1 (no subdivision). Note that time is not adjusted.
         """
         sbatchArgs = self.sbatch_attributes()
-        n_jobs, script = self.job_file(chunk = chunk)
+        script = self.job_file(chunk = chunk)
 
 
-        call = ['sbatch', '--array=0-{0:d}'.format(n_jobs - 1)] +\
-            sbatchArgs
+        call = ['sbatch', '--array=0-{0:d}'.format(chunk - 1)] + sbatchArgs
 
         print("Template Job:")
         print(sampleBatch(script))
@@ -298,7 +297,7 @@ class Batch:
             return False
         else:
             print("Building JobArray record")
-            self.buildJobs(parsed[0], n_jobs)
+            self.buildJobs(parsed[0], chunk)
             print("JobArray Submitted")
             return True
 
