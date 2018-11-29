@@ -1,4 +1,4 @@
-#slurm.py
+# slurm.py
 ######################################################
 # 03/23/17
 # Batch:
@@ -15,16 +15,15 @@
 # _____________________________________________________
 # author(s): Mario E. Belledonne
 
-import argparse
-import subprocess
-
-from . import job
-from . import parallelGlobals
-
-from time import sleep
-from os import environ
 import shlex
 import tempfile
+import argparse
+import subprocess
+from time import sleep
+from os import environ
+
+from . import job
+
 
 class BatchFile:
 
@@ -51,36 +50,49 @@ class BatchFile:
             self.name = f.name
 
 def parseOut(out):
-    """
-    Parses the output of a job-array submission.
+    """ Parses the output of a job-array submission.
+    Arguments:
+        out (str) : Output from sbatch to parse.
     """
     h = 'Submitted batch job '
     out = out.split('\n')
     p = [line for line in out if h in line]
     return [line.replace(h, '') for line in p]
 
-def sampleBatch(call):
-    return '\n'.join(call)
 
-def buildModules(modules):
+def buildModules(modules, purge = True):
+    """ Returns a list that is evaluated to import modules on CentOS.
+
+    Arguments:
+        modules (list): List of module names to add.
+        purge (bool): Whether to purge any present modules.
+
     """
-    Returns a list that is evaluated to import modules on CentOS.
-    Purges any modules present.
-    """
-    return  ["module purge"] + \
-        ['module add {!s}'.format(m) for m in modules]
+    l = []
+    if purge:
+        l.append(['module purge'])
+
+    return l.extend(['module add {!s}'.format(m) for m in modules])
 
 def buildExports(exports):
-    """
-    Returns a list that evaluates to environemntal variables.
+    """ Returns a list that evaluates to environemntal variables.
+    Arguments:
+        exports (list): a list of tuples that are parse to `export LEFT=RIGHT`.
     """
     return ["export {0!s}={1!s}".format(name, val)
         for name, val in exports]
 
-def args(parser):
+def args(parser = None):
     """
     Adds slurm specific arguments to an instance of `argparse.ArgumentParser`.
+
+    Arguments:
+        parser (`argparse.ArgumentParser`): Parser to add extra arguments too
+
     """
+    if parser is None:
+        parser = argpase.ArgumentParser()
+
     parser.add_argument('--time', '-t', type=str,   default = "10",
                         help="Maximum time using `sbatch` designations.")
 
@@ -162,11 +174,6 @@ class Batch:
         # cpu
         print("Assigning cpus")
         precursor.append('-c {:d}'.format(self.cpu))
-        if parallelGlobals.setCores(self.cpu):
-            print("Jobs will use {0:d} core(s)".format(self.cpu))
-        else:
-            print("OOPS! Something went wrong with " +\
-                "setting number of cores... Will give only one.")
 
         # memory
         print("Assigning memory")
@@ -280,7 +287,7 @@ class Batch:
         call = ['sbatch', '--array=0-{0:d}'.format(chunk - 1)] + sbatchArgs
 
         print("Template Job:")
-        print(sampleBatch(script))
+        print('\n'.join(script))
 
         # Feed input into subprocess
         script = '\n'.join(script)
