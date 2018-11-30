@@ -49,6 +49,11 @@ class BatchFile:
 
             self.name = f.name
 
+    def read(self):
+        with open(self.name, 'r') as f:
+            data = f.read()
+            print(data)
+
 def parseOut(out):
     """ Parses the output of a job-array submission.
     Arguments:
