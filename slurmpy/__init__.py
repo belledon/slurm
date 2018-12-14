@@ -1,9 +1,4 @@
-
-# from src import parallelGlobals
-# from src import job
-# from src import slurm
-from .src import job
-from .src import parallelGlobals
-from .src import slurm
+from . import job
+from . import sbatch
 
 # __all__ = ["run"]

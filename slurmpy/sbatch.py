@@ -75,9 +75,10 @@ def buildModules(modules, purge = True):
     """
     l = []
     if purge:
-        l.append(['module purge'])
-
-    return l.extend(['module add {!s}'.format(m) for m in modules])
+        l.append('module purge')
+    for m in modules:
+        l.append('module add {0!s}'.format(m))
+    return l
 
 def buildExports(exports):
     """ Returns a list that evaluates to environemntal variables.
@@ -96,7 +97,7 @@ def args(parser = None):
 
     """
     if parser is None:
-        parser = argpase.ArgumentParser()
+        parser = argparse.ArgumentParser()
 
     parser.add_argument('--time', '-t', type=str,   default = "10",
                         help="Maximum time using `sbatch` designations.")
@@ -124,13 +125,14 @@ class Batch:
     """
 
     def __init__(self, interpreter, modules, exports, func, batch,
-        flags, args):
+                 flags, extras, args):
         self.interpreter = interpreter
         self.modules = buildModules(modules)
         self.exports = buildExports(exports)
         self.raw_args = args
         self.func = func
         self.flags = flags
+        self.extras = extras
         self.batch = batch
         self.batch_file = None
         self.jobArray = None
@@ -209,7 +211,7 @@ class Batch:
         idx = "$SLURM_ARRAY_TASK_ID * {size} + {offset} + 1".format(
             size = size, offset = offset)
         v_file = ["IND=$(({0!s}))".format(idx)]
-        key = "awk 'NR == n' n=$IND \"$JOBARRAY\""
+        key = "awk 'NR == n' n=$IND \"{0!s}\"".format(self.batch_file.name)
         v_file += ["ARGS=\"$({0!s})\"".format(key)]
         v_file += ["IFS=' '", "read -r -a jobargs <<< \"$ARGS\""]
 
@@ -229,6 +231,7 @@ class Batch:
 
         ___
         <shebang>
+        <extras>
         <module imports>
         <variable exports>
 
@@ -261,12 +264,12 @@ class Batch:
 
         job_size = int(n_args/chunk)
 
-        # Export path to the `BatchFile`
-        print("Exporting job array file")
-        environ["JOBARRAY"] = self.batch_file.name
+        # # Export path to the `BatchFile`
+        # print("Exporting job array file")
+        # environ["JOBARRAY"] = self.batch_file.name
 
         # The header contains all environmental variables
-        v_file = [self.interpreter] + self.modules + self.exports
+        v_file = [self.interpreter] + self.extras + self.modules + self.exports
 
         for rep in range(job_size):
             v_file += self.v_read_batch_file(size = job_size, offset = rep)
