@@ -1,6 +1,5 @@
 # slurm
 Python3 interface for slurm job submission
-
  
 ### Dependencies: 
 - argparse
