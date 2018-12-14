@@ -8,5 +8,4 @@ Python3 interface for slurm job submission
 
 See example.py for in-depth example.
 
-
 (Dont worry this will be populated in the nearish future...famous last words)
