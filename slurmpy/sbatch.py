@@ -31,12 +31,13 @@ class BatchFile:
     Temporary file that contains the batch job data.
 
     Attributes:
-        - name (str): path of file
+        array (iterable): Collection of arguments (one line per job)
+        home (optional,str): path of file. Defaults to $PWD
     """
 
-    def __init__(self, array, home=0):
+    def __init__(self, array, home=None):
 
-        if home == 0:
+        if home is None:
             d = environ["PWD"]
         else:
             d = home
@@ -64,58 +65,6 @@ def parseOut(out):
     p = [line for line in out if h in line]
     return [line.replace(h, '') for line in p]
 
-
-def buildModules(modules, purge = True):
-    """ Returns a list that is evaluated to import modules on CentOS.
-
-    Arguments:
-        modules (list): List of module names to add.
-        purge (bool): Whether to purge any present modules.
-
-    """
-    l = []
-    if purge:
-        l.append('module purge')
-    for m in modules:
-        l.append('module add {0!s}'.format(m))
-    return l
-
-def buildExports(exports):
-    """ Returns a list that evaluates to environemntal variables.
-    Arguments:
-        exports (list): a list of tuples that are parse to `export LEFT=RIGHT`.
-    """
-    return ["export {0!s}={1!s}".format(name, val)
-        for name, val in exports]
-
-def args(parser = None):
-    """
-    Adds slurm specific arguments to an instance of `argparse.ArgumentParser`.
-
-    Arguments:
-        parser (`argparse.ArgumentParser`): Parser to add extra arguments too
-
-    """
-    if parser is None:
-        parser = argparse.ArgumentParser()
-
-    parser.add_argument('--time', '-t', type=str,   default = "10",
-                        help="Maximum time using `sbatch` designations.")
-
-    parser.add_argument('--cpus', '-c', type = int, default = 2,
-                        help = "Number of cores per job")
-
-    parser.add_argument('--mem', '-m', type = str, default = "1G",
-                        help  = "Amount of memory per job as \"int[B,K,M,G])\"")
-
-    parser.add_argument('--qos', '-q', type = str, default = 'normal',
-                        help = "Quality of service")
-
-    parser.add_argument('--gres', '-g', type = str,
-                        help  = "Specify  gres as \{type:number\}")
-
-    return parser
-
 class Batch:
 
     """
@@ -124,12 +73,9 @@ class Batch:
     Handles formatting for IO with `slurm.sbatch`.
     """
 
-    def __init__(self, interpreter, modules, exports, func, batch,
-                 flags, extras, args):
+    def __init__(self, interpreter, func, batch, flags, extras, resources):
         self.interpreter = interpreter
-        self.modules = buildModules(modules)
-        self.exports = buildExports(exports)
-        self.raw_args = args
+        self.resources = resources
         self.func = func
         self.flags = flags
         self.extras = extras
@@ -138,75 +84,43 @@ class Batch:
         self.jobArray = None
 
     @property
-    def cpu(self):
-        return self._cpu
-
-    @property
-    def mem(self):
-        return self._mem
-
-    @property
-    def time(self):
-        return self._time
-
-    @property
-    def gres(self):
-        return self._gres
-
-    @property
-    def qos(self):
-        return self._qos
+    def resources(self):
+        return self._resources
 
     @property
     def raw_args(self):
         return self._raw_args
 
-    @raw_args.setter
-    def raw_args(self, args):
-        self._cpu = args.cpus
-        self._mem = args.mem
-        self._time = args.time
-        self._gres = args.gres
-        self._qos = args.qos
+    @resources.setter
+    def resources(self, r):
+        if not isinstance(r, dict):
+            raise ValueError(
+                'Submitted resources must be a valid `dict` object'
+            )
+        self._raw_args = r
+        rule1 = lambda p: '{0!s}={1!s}'.format(*p)
+        rule2 = lambda p: '{0!s}'.format(p[0])
+        l = [rule2(p) if p[1] is None else rule1(p) for p in r.items()]
+        self._resources = list(map(lambda x: '#SBATCH --'+x, l))
 
 
-    def sbatch_attributes(self):
-        """
-        Generates the resource attributes for `sbatch`.
-        """
-        print("Creating slurm configuration...")
-        # Assign static variables for slurm
-        precursor = []
-
-        # cpu
-        print("Assigning cpus")
-        precursor.append('-c {:d}'.format(self.cpu))
-
-        # memory
-        print("Assigning memory")
-        precursor.append('--mem={!s}'.format(self.mem))
-        print("Jobs will use {!s} of memory".format(self.mem))
-
-        # time
-        print("Jobs will "+\
-            "have a maximum time: {0!s}".format(self.time))
-        precursor.append( '--time={0!s}'.format(self.time))
-
-        # qos
-        print("Jobs will be subbmitted under "+self.qos)
-        precursor.append("--qos=" + self.qos)
-        if self.qos == "use-everything" or self.qos == 'normal':
-            precursor.append("--requeue")
-
-        # gpus
-        if self.gres is not None:
-            print("Jobs will have gres".format(self.gres))
-            precursor.append("--gres={0!s}".format(self.gres))
-
-        return precursor
 
     def v_read_batch_file(self, size = 1, offset = 0):
+        """ Returns strings containing bash commands to read from batch file
 
+        A Helper function that includes the logic for teasing out the arguments
+        to pass to `func` across jobs in a job array.
+
+        This also includes logic for dense jobs where there are multiple
+        calls to `func` when `chunk > 1`.
+
+        Arguments:
+            size (int, optional): The total # of calls to `func`
+            offset (int, optional): Which call we are currently on
+
+        Returns:
+            A list of calls to `func` interpretable by bash
+        """
         # Variables to read args from `BatchFile`
         idx = "$SLURM_ARRAY_TASK_ID * {size} + {offset} + 1".format(
             size = size, offset = offset)
@@ -231,26 +145,16 @@ class Batch:
 
         ___
         <shebang>
+        <SBATCH args>
+        .
+        .
         <extras>
-        <module imports>
-        <variable exports>
-
+        .
+        .
         for i in [0..chunk):
             <Read data for chunk 0>
             <Run cmd for chunk 0>
         """
-        if self.interpreter == '#!/bin/sh':
-                print('Using interpreter: sh')
-        elif self.interpreter == '#!/bin/bash':
-            print('Using interpreter: bash')
-        elif self.interpreter == 'local':
-            print('Running locally')
-
-        else:
-            raise ValueError(
-                'Iterpreter {!s} not recognized!'.format(
-                    self.interpreter))
-
         # The dependent variables called with func.
         # These may include dynamic flags
         arguments = [' '.join([ str(e) for e in b ])
@@ -264,42 +168,39 @@ class Batch:
 
         job_size = int(n_args/chunk)
 
-        # # Export path to the `BatchFile`
-        # print("Exporting job array file")
-        # environ["JOBARRAY"] = self.batch_file.name
-
         # The header contains all environmental variables
-        v_file = [self.interpreter] + self.extras + self.modules + self.exports
+        v_file = [self.interpreter] + self.resources + \
+                 ['#SBATCH --array=0-{0:d}'.format(chunk-1)] +\
+                 self.extras
 
         for rep in range(job_size):
             v_file += self.v_read_batch_file(size = job_size, offset = rep)
 
         return v_file
 
-    def buildJobs(self, jobArray, size):
-        self.jobArray = job.JobArray(jobArray, size, cpu = self.cpu,
-                mem = self.mem, qos = self.qos, time = self.time)
+    # def buildJobs(self, jobArray, size):
+    #     self.jobArray = job.JobArray(jobArray, size, cpu = self.cpu,
+    #             mem = self.mem, qos = self.qos, time = self.time)
 
-    def run(self, chunk = 1):
+    def run(self, n = 1, check_submission = True):
         """
         Submits the job array to Slurm using `sbatch`.
 
         Arguments:
-            chunk (int, optional): The factor to subdivide the number of jobs.
-            Default is 1 (no subdivision). Note that time is not adjusted.
+            n (int, optional): The size of the job array.
+            Default is 1. Note that time is not adjusted.
+
+            check_submission (bool, optional): Whether subprocess will validate
+            submission call.
+
+        Returns:
+           True if submission was successful. Otherwise, False.
         """
-        sbatchArgs = self.sbatch_attributes()
-        script = self.job_file(chunk = chunk)
-
-
-        call = ['sbatch', '--array=0-{0:d}'.format(chunk - 1)] + sbatchArgs
-
-        print("Template Job:")
-        print('\n'.join(script))
-
         # Feed input into subprocess
+        script = self.job_file(chunk = n)
         script = '\n'.join(script)
-        result = job.command(call, input=script)
+        result = job.command('sbatch', input=script,
+                             check_err = check_submission)
 
         if not result:
             raise SystemError("Failed to submit template")
@@ -311,28 +212,5 @@ class Batch:
             print(out)
             return False
         else:
-            print("Building JobArray record")
-            self.buildJobs(parsed[0], chunk)
-            print("JobArray Submitted")
+            print("JobArray Submitted to {0!s}".format(parsed[0]))
             return True
-
-
-    def monitor(self):
-        jobArray = self.jobArray
-        if not jobArray:
-            print("No jobs for batch... attempting to generate")
-            self.run()
-
-        print("Checking jobs")
-        complete, pending, running = jobArray.update()
-        while complete < jobArray.size :
-
-            sleep(1)
-            complete, pending, running = jobArray.update()
-            print(("Pending: {0:04d} | Running: {1:04d} | " +\
-                "Complete {2:04d}").format(
-                len(pending), len(running), complete), end="\r")
-
-        print("\n")
-
-        return True
