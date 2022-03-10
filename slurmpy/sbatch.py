@@ -138,7 +138,7 @@ class Batch:
         v_file += [' '.join([self.func, value, flags])]
         return v_file
 
-    def job_file(self, chunk = 1):
+    def job_file(self, chunk = 1, tmp_dir = None):
         """
         Generates a string that represents the virtual job file.
         Each job file has the format of:
@@ -159,7 +159,7 @@ class Batch:
         # These may include dynamic flags
         arguments = [' '.join([ str(e) for e in b ])
             for b in self.batch if len(b) > 0]
-        self.batch_file = BatchFile(arguments)
+        self.batch_file = BatchFile(arguments, home = tmp_dir)
 
         # determine the dimensions of the jobarray (n_jobs, cmds per job)
         n_args = len(arguments)
@@ -182,7 +182,7 @@ class Batch:
     #     self.jobArray = job.JobArray(jobArray, size, cpu = self.cpu,
     #             mem = self.mem, qos = self.qos, time = self.time)
 
-    def run(self, n = 1, check_submission = True):
+    def run(self, n = 1, check_submission = True, script=None):
         """
         Submits the job array to Slurm using `sbatch`.
 
@@ -197,8 +197,9 @@ class Batch:
            True if submission was successful. Otherwise, False.
         """
         # Feed input into subprocess
-        script = self.job_file(chunk = n)
-        script = '\n'.join(script)
+        if script is None:
+            script = self.job_file(chunk = n)
+            script = '\n'.join(script)
         result = job.command('sbatch', input=script,
                              check_err = check_submission)
 
