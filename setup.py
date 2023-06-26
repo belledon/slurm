@@ -4,7 +4,7 @@ with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setuptools.setup(
-    name="slurm",
+    name="slurmpy",
     version="0.0.1",
     author="Mario Belledonne",
     author_email="mbelledonne@gmail.com",
